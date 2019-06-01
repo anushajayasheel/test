@@ -1,0 +1,24 @@
+---
+kind: "NetworkPolicy"
+apiVersion: "extensions/v1beta1"
+spec:
+  podSelector:
+    matchLabels:
+      nirmata.io/component: "hello"
+    matchExpressions: []
+  policyTypes:
+  - "Ingress"
+  - "Egress"
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+        matchExpressions: []
+  egress:
+  - {}
+metadata:
+  annotations: {}
+  name: "hello"
+  labels:
+    nirmata.io/networkpolicy.name: "hello"
+    nirmata.io/component: "hello"

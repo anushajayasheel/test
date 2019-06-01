@@ -10,7 +10,7 @@ metadata:
     nirmata.io/test: "testLabel"
     nirmata.io/component: "redis-master"
 spec:
-  replicas: 2
+  replicas: 4
   revisionHistoryLimit: 5
   selector:
     matchLabels:

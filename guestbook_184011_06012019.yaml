@@ -1,0 +1,346 @@
+﻿---
+kind: "Deployment"
+apiVersion: "extensions/v1beta1"
+metadata:
+  annotations: {}
+  name: "redis-master"
+  labels:
+    nirmata.io/deployment.name: "redis-master"
+    nirmata.io/service.name: "redis-master"
+    nirmata.io/test: "testLabel"
+    nirmata.io/component: "redis-master"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: "redis"
+      role: "master"
+      tier: "backend"
+      nirmata.io/service.name: "redis-master"
+      nirmata.io/component: "redis-master"
+    matchExpressions: []
+  strategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 2
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app: "redis"
+        nirmata.io/deployment.name: "redis-master"
+        role: "master"
+        tier: "backend"
+        nirmata.io/service.name: "redis-master"
+        nirmata.io/component: "redis-master"
+    spec:
+      terminationGracePeriodSeconds: 30
+      nodeSelector: {}
+      containers:
+      - name: "master"
+        image: "k8s.gcr.io/redis:latest"
+        command: []
+        args: []
+        imagePullPolicy: "Always"
+        ports:
+        - name: "tcp"
+          containerPort: 6379
+          protocol: "TCP"
+
+---
+kind: "Deployment"
+apiVersion: "extensions/v1beta1"
+metadata:
+  annotations: {}
+  name: "redis-slave"
+  labels:
+    nirmata.io/deployment.name: "redis-slave"
+    nirmata.io/service.name: "redis-slave"
+    nirmata.io/test: "testLabel"
+    nirmata.io/component: "redis-slave"
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: "redis"
+      role: "slave"
+      tier: "backend"
+      nirmata.io/service.name: "redis-slave"
+      nirmata.io/component: "redis-slave"
+    matchExpressions: []
+  strategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app: "redis"
+        nirmata.io/deployment.name: "redis-slave"
+        role: "slave"
+        tier: "backend"
+        nirmata.io/service.name: "redis-slave"
+        nirmata.io/component: "redis-slave"
+    spec:
+      terminationGracePeriodSeconds: 30
+      nodeSelector: {}
+      containers:
+      - name: "slave"
+        image: "gcr.io/google_samples/gb-redisslave:v1"
+        command: []
+        args: []
+        ports:
+        - containerPort: 6379
+          protocol: "TCP"
+        env:
+        - name: "GET_HOSTS_FROM"
+          value: "dns"
+
+---
+kind: "NetworkPolicy"
+apiVersion: "extensions/v1beta1"
+spec:
+  podSelector:
+    matchLabels:
+      nirmata.io/service.name: "redis-slave"
+      nirmata.io/component: "redis-slave"
+    matchExpressions: []
+  policyTypes:
+  - "Ingress"
+  - "Egress"
+  egress:
+  - {}
+metadata:
+  annotations: {}
+  name: "redis-slave"
+  labels:
+    nirmata.io/networkpolicy.name: "redis-slave"
+    nirmata.io/service.name: "redis-slave"
+    nirmata.io/component: "redis-slave"
+
+---
+kind: "NetworkPolicy"
+apiVersion: "extensions/v1beta1"
+spec:
+  podSelector:
+    matchLabels:
+      nirmata.io/service.name: "frontend"
+      nirmata.io/component: "frontend"
+    matchExpressions: []
+  policyTypes:
+  - "Ingress"
+  - "Egress"
+  egress:
+  - ports:
+    - protocol: "TCP"
+      port: 80
+    to:
+    - podSelector:
+        matchLabels:
+          nirmata.io/service.name: "redis-master"
+          nirmata.io/service: "redis-master"
+        matchExpressions: []
+metadata:
+  annotations: {}
+  name: "frontend"
+  labels:
+    nirmata.io/networkpolicy.name: "frontend"
+    nirmata.io/service.name: "frontend"
+    nirmata.io/component: "frontend"
+
+---
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  annotations: {}
+  name: "frontend"
+  labels:
+    nirmata.io/service.name: "frontend"
+    nirmata.io/component: "frontend"
+spec:
+  externalIPs: []
+  loadBalancerSourceRanges: []
+  type: "NodePort"
+  selector:
+    nirmata.io/service.name: "frontend"
+    nirmata.io/component: "frontend"
+  ports:
+  - port: 80
+    protocol: "TCP"
+
+---
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  annotations: {}
+  name: "redis-slave"
+  labels:
+    nirmata.io/service.name: "redis-slave"
+    nirmata.io/component: "redis-slave"
+spec:
+  externalIPs: []
+  loadBalancerSourceRanges: []
+  type: "ClusterIP"
+  selector:
+    nirmata.io/service.name: "redis-slave"
+    nirmata.io/component: "redis-slave"
+  ports:
+  - port: 6379
+    protocol: "TCP"
+
+---
+kind: "Secret"
+apiVersion: "v1"
+data:
+  password: "ZGVmYXVsdA=="
+type: "Opaque"
+metadata:
+  annotations: {}
+  name: "db-secret"
+  labels:
+    nirmata.io/secret.name: "db-secret"
+
+---
+kind: "NetworkPolicy"
+apiVersion: "extensions/v1beta1"
+spec:
+  podSelector:
+    matchLabels:
+      nirmata.io/service.name: "redis-master"
+      nirmata.io/component: "redis-master"
+    matchExpressions: []
+  policyTypes:
+  - "Ingress"
+  - "Egress"
+metadata:
+  annotations: {}
+  name: "redis-master"
+  labels:
+    nirmata.io/networkpolicy.name: "redis-master"
+    nirmata.io/service.name: "redis-master"
+    nirmata.io/component: "redis-master"
+
+---
+apiVersion: "extensions/v1beta1"
+kind: "Ingress"
+metadata:
+  annotations:
+    ingress.kubernetes.io/ssl-redirect: "false"
+  name: "frontend"
+  labels:
+    nirmata.io/ingress.name: "frontend"
+spec:
+  backend:
+    serviceName: "frontend"
+    servicePort: 80
+  rules:
+  - host: "gbk.new.nirmata.io"
+    http:
+      paths:
+      - path: "/"
+        backend:
+          serviceName: "frontend"
+          servicePort: 80
+
+---
+kind: "Deployment"
+apiVersion: "extensions/v1beta1"
+metadata:
+  annotations: {}
+  name: "frontend"
+  labels:
+    nirmata.io/deployment.name: "frontend"
+    nirmata.io/service.name: "frontend"
+    nirmata.io/test: "testLabel"
+    nirmata.io/component: "frontend"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: "guestbook"
+      tier: "frontend"
+      nirmata.io/service.name: "frontend"
+      nirmata.io/component: "frontend"
+    matchExpressions: []
+  strategy:
+    type: "RollingUpdate"
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 2
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app: "guestbook"
+        nirmata.io/deployment.name: "frontend"
+        tier: "frontend"
+        nirmata.io/service.name: "frontend"
+        nirmata.io/component: "frontend"
+    spec:
+      terminationGracePeriodSeconds: 30
+      nodeSelector: {}
+      containers:
+      - name: "php-redis"
+        image: "gcr.io/google-samples/gb-frontend:v4"
+        command: []
+        args: []
+        ports:
+        - containerPort: 80
+          protocol: "TCP"
+        env:
+        - name: "GET_HOSTS_FROM"
+          value: "dns"
+        - name: "test"
+          value: ""
+          valueFrom:
+            secretKeyRef:
+              name: "db-secret"
+              key: "password"
+      affinity:
+        podAntiAffinity: {}
+
+---
+kind: "NetworkPolicy"
+apiVersion: "extensions/v1beta1"
+spec:
+  podSelector:
+    matchLabels: {}
+    matchExpressions: []
+  policyTypes:
+  - "Ingress"
+  - "Egress"
+  ingress:
+  - {}
+  egress:
+  - {}
+metadata:
+  annotations: {}
+  name: "guestbook-default"
+  labels:
+    nirmata.io/networkpolicy.name: "guestbook-default"
+
+---
+apiVersion: "v1"
+kind: "Service"
+metadata:
+  annotations: {}
+  name: "redis-master"
+  labels:
+    nirmata.io/service.name: "redis-master"
+    nirmata.io/component: "redis-master"
+spec:
+  externalIPs: []
+  loadBalancerSourceRanges: []
+  type: "ClusterIP"
+  selector:
+    nirmata.io/service.name: "redis-master"
+    nirmata.io/component: "redis-master"
+  ports:
+  - port: 6379
+    protocol: "TCP"

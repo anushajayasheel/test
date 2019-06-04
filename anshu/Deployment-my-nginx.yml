@@ -8,7 +8,7 @@ metadata:
     nirmata.io/deployment.name: "my-nginx"
     nirmata.io/component: "my-nginx"
 spec:
-  replicas: 2
+  replicas: 4
   revisionHistoryLimit: 5
   selector:
     matchLabels:
